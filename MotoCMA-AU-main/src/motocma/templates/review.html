@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Review import - MotoCMA-AU{% endblock %}
+{% block content %}
+<section class="review-heading">
+  <div>
+    <p class="eyebrow">Temporary draft</p>
+    <h1>Review every field</h1>
+    <p>Nothing below has been written to the approved-listing database.</p>
+  </div>
+  <span class="status">Unsaved</span>
+</section>
+
+{% for warning in draft.warnings %}
+<div class="notice warning">{{ warning }}</div>
+{% endfor %}
+{% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+
+{% if candidates %}
+<section class="notice duplicate">
+  <h2>Possible duplicate{{ "s" if candidates|length > 1 else "" }}</h2>
+  <p>No existing record will be overwritten. Review the matches before confirming.</p>
+  {% for candidate in candidates %}
+  <label class="candidate">
+    <input form="review-form" type="radio" name="target_listing_id"
+           value="{{ candidate.listing_id }}">
+    <span>
+      <strong>{{ candidate.title or "Untitled listing" }}</strong>
+      <span class="candidate-score">score {{ candidate.score }}</span>
+      <small>{{ candidate.reasons|join(", ") }}</small>
+    </span>
+  </label>
+  {% endfor %}
+</section>
+{% endif %}
+
+<form id="review-form" method="post" action="/imports/{{ draft.id }}/save" class="card">
+  <div class="form-grid">
+    <label>Original title
+      <input name="original_title" required value="{{ draft.original_title or '' }}">
+    </label>
+    <label>Asking price (AUD)
+      <input name="asking_price" inputmode="decimal"
+             value="{{ format_money(draft.asking_price_cents) }}">
+    </label>
+    <label>Year
+      <input name="year" inputmode="numeric" value="{{ draft.year or '' }}">
+    </label>
+    <label>Odometer (km)
+      <input name="odometer_km" inputmode="numeric" value="{{ draft.odometer_km or '' }}">
+    </label>
+    <label>Make
+      <input name="make" value="{{ draft.make or '' }}">
+    </label>
+    <label>Model
+      <input name="model" value="{{ draft.model or '' }}">
+    </label>
+    <label class="wide">Location
+      <input name="location" value="{{ draft.location or '' }}">
+    </label>
+    <label class="wide">Description
+      <textarea name="description" rows="8">{{ draft.description or '' }}</textarea>
+    </label>
+    <label class="wide">Condition notes
+      <textarea name="condition_notes" rows="4">{{ draft.condition_notes or '' }}</textarea>
+    </label>
+    <label>Registration
+      <select name="registration_status">
+        <option value="unknown"
+                {{ "selected" if (draft.registration_status or "unknown") == "unknown" else "" }}>
+          Unknown
+        </option>
+        <option value="registered"
+                {{ "selected" if draft.registration_status == "registered" else "" }}>
+          Registered
+        </option>
+        <option value="unregistered"
+                {{ "selected" if draft.registration_status == "unregistered" else "" }}>
+          Unregistered
+        </option>
+      </select>
+    </label>
+    <label>Roadworthy
+      <select name="roadworthy_status">
+        <option value="unknown"
+                {{ "selected" if (draft.roadworthy_status or "unknown") == "unknown" else "" }}>
+          Unknown
+        </option>
+        <option value="included"
+                {{ "selected" if draft.roadworthy_status == "included" else "" }}>
+          Included
+        </option>
+        <option value="not_included"
+                {{ "selected" if draft.roadworthy_status == "not_included" else "" }}>
+          Not included
+        </option>
+      </select>
+    </label>
+    <label>LAMS approved
+      <select name="is_lams_approved">
+        <option value="" {{ "selected" if draft.is_lams_approved is none else "" }}>Unknown</option>
+        <option value="yes" {{ "selected" if draft.is_lams_approved is sameas true else "" }}>
+          Yes
+        </option>
+        <option value="no" {{ "selected" if draft.is_lams_approved is sameas false else "" }}>
+          No
+        </option>
+      </select>
+    </label>
+    <label>Modified
+      <select name="is_modified">
+        <option value="" {{ "selected" if draft.is_modified is none else "" }}>Unknown</option>
+        <option value="yes" {{ "selected" if draft.is_modified is sameas true else "" }}>
+          Yes
+        </option>
+        <option value="no" {{ "selected" if draft.is_modified is sameas false else "" }}>
+          No
+        </option>
+      </select>
+    </label>
+    <label>Listing status
+      <select name="listing_status">
+        <option value="unknown"
+                {{ "selected" if (draft.listing_status or "unknown") == "unknown" else "" }}>
+          Unknown
+        </option>
+        <option value="active" {{ "selected" if draft.listing_status == "active" else "" }}>
+          Active
+        </option>
+        <option value="removed" {{ "selected" if draft.listing_status == "removed" else "" }}>
+          Removed
+        </option>
+        <option value="sold" {{ "selected" if draft.listing_status == "sold" else "" }}>
+          Sold
+        </option>
+        <option value="expired" {{ "selected" if draft.listing_status == "expired" else "" }}>
+          Expired
+        </option>
+      </select>
+    </label>
+    <label>Listing ID
+      <input name="source_listing_id" value="{{ draft.source_listing_id or '' }}">
+    </label>
+    <label>Seller name
+      <input name="seller_name" value="{{ draft.seller_name or '' }}">
+    </label>
+    <label class="wide">Source URL
+      <input name="source_url" type="url" value="{{ draft.source_url or '' }}">
+    </label>
+    <label class="wide">Seller profile URL
+      <input name="seller_profile_url" type="url"
+             value="{{ draft.seller_profile_url or '' }}">
+    </label>
+    <label class="wide">Image URLs (one per line)
+      <textarea name="image_urls" rows="4">{{ draft.image_urls|join("\n") }}</textarea>
+    </label>
+  </div>
+
+  <dl class="provenance">
+    <div><dt>Source</dt><dd>{{ draft.source }}</dd></div>
+    <div><dt>Method</dt><dd>{{ draft.collection_method }}</dd></div>
+    <div><dt>Collected</dt><dd>{{ draft.collected_at.isoformat() }}</dd></div>
+  </dl>
+
+  <div class="actions">
+    <button class="secondary" type="submit" formaction="/imports/{{ draft.id }}/review">
+      Recheck duplicates
+    </button>
+    {% if candidates %}
+    <button type="submit" name="resolution" value="update">Add observation to selected</button>
+    <button class="caution" type="submit" name="resolution" value="create">
+      Create separate listing
+    </button>
+    {% else %}
+    <button type="submit" name="resolution" value="create">Save Listing</button>
+    {% endif %}
+    <button class="danger" type="submit" name="resolution" value="cancel">Cancel import</button>
+  </div>
+</form>
+{% endblock %}

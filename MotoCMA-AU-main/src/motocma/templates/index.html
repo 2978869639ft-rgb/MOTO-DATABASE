@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Owner-controlled collection</p>
+  <h1>Review first. Save only when you decide.</h1>
+  <p>Importing creates a temporary draft. Your database is unchanged until you approve it.</p>
+</section>
+
+{% if message %}<div class="notice success">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+
+<div class="grid">
+  <section class="card">
+    <h2>Facebook URL</h2>
+    <p>Marketplace item links and Facebook share links are accepted.</p>
+    <form method="post" action="/imports">
+      <input type="hidden" name="method" value="facebook_url">
+      <label for="facebook-url">URL</label>
+      <input id="facebook-url" name="value" type="url" required
+             placeholder="https://www.facebook.com/marketplace/item/...">
+      <button type="submit">Create review draft</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Paste listing text</h2>
+    <p>Use this reliable fallback whenever Facebook does not expose listing details.</p>
+    <form method="post" action="/imports">
+      <input type="hidden" name="method" value="pasted_text">
+      <label for="listing-text">Listing text</label>
+      <textarea id="listing-text" name="value" required rows="8"
+                placeholder="2022 Yamaha MT-07&#10;$9,500&#10;12,000 km..."></textarea>
+      <button type="submit">Create review draft</button>
+    </form>
+  </section>
+</div>
+
+<section class="card records">
+  <div class="records-heading">
+    <h2>Approved listings <span class="count">{{ listings|length }}</span></h2>
+    {% if search.has_filters() %}<a href="/">Clear filters</a>{% endif %}
+  </div>
+
+  <form class="filters" method="get" action="/">
+    <label>Make
+      <input name="make" value="{{ search.make or '' }}">
+    </label>
+    <label>Model
+      <input name="model" value="{{ search.model or '' }}">
+    </label>
+    <label>Location
+      <input name="location" value="{{ search.location or '' }}">
+    </label>
+    <label>Status
+      <select name="listing_status">
+        <option value="">Any</option>
+        <option value="active" {{ "selected" if search.listing_status == "active" else "" }}>
+          Active
+        </option>
+        <option value="removed" {{ "selected" if search.listing_status == "removed" else "" }}>
+          Removed
+        </option>
+        <option value="sold" {{ "selected" if search.listing_status == "sold" else "" }}>
+          Sold
+        </option>
+        <option value="expired" {{ "selected" if search.listing_status == "expired" else "" }}>
+          Expired
+        </option>
+      </select>
+    </label>
+    <label>Min year
+      <input name="min_year" inputmode="numeric" value="{{ search.min_year or '' }}">
+    </label>
+    <label>Max year
+      <input name="max_year" inputmode="numeric" value="{{ search.max_year or '' }}">
+    </label>
+    <label>Min price
+      <input name="min_price" inputmode="decimal"
+             value="{{ format_money(search.min_price_cents) }}">
+    </label>
+    <label>Max price
+      <input name="max_price" inputmode="decimal"
+             value="{{ format_money(search.max_price_cents) }}">
+    </label>
+    <label>Max km
+      <input name="max_odometer_km" inputmode="numeric"
+             value="{{ search.max_odometer_km or '' }}">
+    </label>
+    <button type="submit">Filter</button>
+  </form>
+
+  {% if listings %}
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Year</th>
+        <th>Price</th>
+        <th>Odometer</th>
+        <th>Location</th>
+        <th>Model</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for listing in listings %}
+      <tr>
+        <td>{{ listing.title or "Untitled" }}</td>
+        <td>{{ listing.year or "-" }}</td>
+        <td>
+          {% if listing.price_cents is not none %}
+            ${{ "%.2f"|format(listing.price_cents / 100) }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>
+          {% if listing.odometer_km is not none %}
+            {{ listing.odometer_km }} km
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>{{ listing.location or "-" }}</td>
+        <td>{{ [listing.make, listing.model]|select|join(" ") or "-" }}</td>
+        <td>{{ listing.listing_status or "unknown" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No approved listings yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
